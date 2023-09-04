@@ -17,6 +17,7 @@ type Options struct {
 	ServerAddress string `long:"server-address" description:"server address, required"`
 	UploadBytes   string `long:"upload-bytes" description:"upload bytes #[KMG]"`
 	DownloadBytes string `long:"download-bytes" description:"download bytes #[KMG]"`
+	UseBbr        bool   `long:"use-bbr" description:"use bbr, default: false"`
 }
 
 func main() {
@@ -46,7 +47,7 @@ func main() {
 		go func() {
 			log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
 		}()
-		if err := perf.RunServer(opt.ServerAddress, keyLogFile); err != nil {
+		if err := perf.RunServer(opt.ServerAddress, keyLogFile, opt.UseBbr); err != nil {
 			log.Fatal(err)
 		}
 	} else {
@@ -58,6 +59,7 @@ func main() {
 			perf.ParseBytes(opt.UploadBytes),
 			perf.ParseBytes(opt.DownloadBytes),
 			keyLogFile,
+			opt.UseBbr,
 		); err != nil {
 			log.Fatal(err)
 		}

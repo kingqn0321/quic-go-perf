@@ -19,7 +19,7 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-func RunServer(addr string, keyLogFile io.Writer) error {
+func RunServer(addr string, keyLogFile io.Writer, useBbr bool) error {
 	tlsConf, err := generateSelfSignedTLSConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -28,6 +28,9 @@ func RunServer(addr string, keyLogFile io.Writer) error {
 	tlsConf.KeyLogWriter = keyLogFile
 
 	conf := config.Clone()
+	if useBbr {
+		conf.CC = quic.CcBbr
+	}
 	conf.RequireAddressValidation = func(net.Addr) bool { return false }
 	ln, err := quic.ListenAddr(addr, tlsConf, conf)
 	if err != nil {

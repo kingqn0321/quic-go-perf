@@ -17,10 +17,14 @@ type Result struct {
 	Latency float64 `json:"latency"`
 }
 
-func RunClient(addr string, uploadBytes, downloadBytes uint64, keyLogFile io.Writer) error {
+func RunClient(addr string, uploadBytes, downloadBytes uint64, keyLogFile io.Writer, useBbr bool) error {
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	conf := config.Clone()
+	if useBbr {
+		conf.CC = quic.CcBbr
+	}
 	conn, err := quic.DialAddr(
 		ctx,
 		addr,
@@ -29,7 +33,7 @@ func RunClient(addr string, uploadBytes, downloadBytes uint64, keyLogFile io.Wri
 			NextProtos:         []string{ALPN},
 			KeyLogWriter:       keyLogFile,
 		},
-		config,
+		conf,
 	)
 	if err != nil {
 		return err
