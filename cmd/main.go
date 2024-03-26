@@ -6,6 +6,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"time"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/quic-go/perf"
@@ -15,9 +16,10 @@ type Options struct {
 	RunServer             bool   `long:"run-server" description:"run as server, default: false"`
 	KeyLogFile            string `long:"key-log" description:"export TLS keys"`
 	ServerAddress         string `long:"server-address" description:"server address, required"`
+	Interval              string `long:"interval" description:"check interval (second), default: 10"`
 	UploadBytes           string `long:"upload-bytes" description:"upload bytes #[KMG]"`
 	DownloadBytes         string `long:"download-bytes" description:"download bytes #[KMG]"`
-	UseBbr                bool   `long:"use-bbr" description:"use bbr, default: false"`
+	Bbrv1                 bool   `long:"bbrv1" description:"bbrv1, default: false"`
 	Disable1rttEncryption bool   `long:"d1e" description:"disable 1rtt encryption, default: false"`
 }
 
@@ -44,6 +46,10 @@ func main() {
 		keyLogFile = f
 	}
 
+	if opt.Interval == "" {
+		opt.Interval = "10"
+	}
+
 	if opt.RunServer {
 		go func() {
 			log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
@@ -51,7 +57,7 @@ func main() {
 		if err := perf.RunServer(&perf.ServerConfig{
 			Addr:                  opt.ServerAddress,
 			KeyLogFile:            keyLogFile,
-			UseBbr:                opt.UseBbr,
+			Bbrv1:                 opt.Bbrv1,
 			Disable1rttEncryption: opt.Disable1rttEncryption,
 		}); err != nil {
 			log.Fatal(err)
@@ -65,8 +71,9 @@ func main() {
 			UploadBytes:           perf.ParseBytes(opt.UploadBytes),
 			DownloadBytes:         perf.ParseBytes(opt.DownloadBytes),
 			KeyLogFile:            keyLogFile,
-			UseBbr:                opt.UseBbr,
+			Bbrv1:                 opt.Bbrv1,
 			Disable1rttEncryption: opt.Disable1rttEncryption,
+			Interval:              time.Duration(perf.ParseNumber(opt.Interval) * int64(time.Second)),
 		}); err != nil {
 			log.Fatal(err)
 		}

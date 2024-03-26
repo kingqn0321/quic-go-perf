@@ -44,3 +44,14 @@ func ParseBytes(input string) uint64 {
 	}
 	return num * kmg
 }
+
+func ParseNumber(input string) int64 {
+	if input == "" {
+		return 0
+	}
+	num, err := strconv.ParseInt(input, 10, 64)
+	if err != nil {
+		panic("invalid number")
+	}
+	return num
+}

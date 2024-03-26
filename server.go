@@ -22,7 +22,7 @@ import (
 type ServerConfig struct {
 	Addr                  string
 	KeyLogFile            io.Writer
-	UseBbr                bool
+	Bbrv1                 bool
 	Disable1rttEncryption bool
 }
 
@@ -35,8 +35,8 @@ func RunServer(srvConf *ServerConfig) error {
 	tlsConf.KeyLogWriter = srvConf.KeyLogFile
 
 	quicConf := config.Clone()
-	if srvConf.UseBbr {
-		log.Println("Feature use_bbr: ON")
+	if srvConf.Bbrv1 {
+		log.Println("Feature bbrv1: ON")
 		quicConf.CC = quic.CcBbr
 	}
 	if srvConf.Disable1rttEncryption {

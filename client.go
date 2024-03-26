@@ -21,23 +21,18 @@ type ClientConfig struct {
 	Addr                       string
 	UploadBytes, DownloadBytes uint64
 	KeyLogFile                 io.Writer
-	UseBbr                     bool
+	Bbrv1                      bool
 	Disable1rttEncryption      bool
+	Interval                   time.Duration
 }
 
 func RunClient(cliConf *ClientConfig) error {
 	start := time.Now()
-	ticker := time.NewTicker(time.Second * 10)
-	go func() {
-		for t := range ticker.C {
-			log.Printf("Time elapsed: %.2fs", t.Sub(start).Seconds())
-		}
-	}()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	quicConf := config.Clone()
-	if cliConf.UseBbr {
-		log.Println("Feature use_bbr: ON")
+	if cliConf.Bbrv1 {
+		log.Println("Feature bbrv1: ON")
 		quicConf.CC = quic.CcBbr
 	}
 	if cliConf.Disable1rttEncryption {
@@ -57,11 +52,12 @@ func RunClient(cliConf *ClientConfig) error {
 	if err != nil {
 		return err
 	}
+	defer conn.CloseWithError(0, "")
 	str, err := conn.OpenStream()
 	if err != nil {
 		return err
 	}
-	uploadTook, downloadTook, err := handleClientStream(str, cliConf.UploadBytes, cliConf.DownloadBytes)
+	uploadTook, downloadTook, err := handleClientStream(str, cliConf.UploadBytes, cliConf.DownloadBytes, cliConf.Interval)
 	if err != nil {
 		return err
 	}
@@ -77,7 +73,21 @@ func RunClient(cliConf *ClientConfig) error {
 	return nil
 }
 
-func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint64) (uploadTook, downloadTook time.Duration, err error) {
+func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint64, interval time.Duration) (uploadTook, downloadTook time.Duration, err error) {
+	uploadRemaining := uploadBytes
+	downloadRemaining := downloadBytes
+	if interval > 0 {
+		start := time.Now()
+		ticker := time.NewTicker(interval)
+		go func() {
+			for t := range ticker.C {
+				log.Printf("Time elapsed: %.2fs, upload: %d%%, download: %d%%",
+					t.Sub(start).Seconds(),
+					100-uploadRemaining*100/uploadBytes,
+					100-downloadRemaining*100/downloadBytes)
+			}
+		}()
+	}
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, downloadBytes)
 	if _, err := str.Write(b); err != nil {
@@ -87,15 +97,15 @@ func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint6
 	log.Println("Upload data start.")
 	b = make([]byte, 16*1024)
 	uploadStart := time.Now()
-	for uploadBytes > 0 {
-		if uploadBytes < uint64(len(b)) {
-			b = b[:uploadBytes]
+	for uploadRemaining > 0 {
+		if uploadRemaining < uint64(len(b)) {
+			b = b[:uploadRemaining]
 		}
 		n, err := str.Write(b)
 		if err != nil {
 			return 0, 0, err
 		}
-		uploadBytes -= uint64(n)
+		uploadRemaining -= uint64(n)
 	}
 	if err := str.Close(); err != nil {
 		return 0, 0, err
@@ -105,20 +115,19 @@ func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint6
 	// download data
 	log.Println("Download data start.")
 	b = b[:cap(b)]
-	remaining := downloadBytes
 	downloadStart := time.Now()
-	for remaining > 0 {
+	for downloadRemaining > 0 {
 		n, err := str.Read(b)
-		if uint64(n) > remaining {
-			return 0, 0, fmt.Errorf("server sent more data than expected, expected %d, got %d", downloadBytes, remaining+uint64(n))
+		if uint64(n) > downloadRemaining {
+			return 0, 0, fmt.Errorf("server sent more data than expected, expected %d, got %d", downloadBytes, downloadRemaining+uint64(n))
 		}
-		remaining -= uint64(n)
+		downloadRemaining -= uint64(n)
 		if err != nil {
 			if err == io.EOF {
-				if remaining == 0 {
+				if downloadRemaining == 0 {
 					break
 				}
-				return 0, 0, fmt.Errorf("server didn't send enough data, expected %d, got %d", downloadBytes, downloadBytes-remaining)
+				return 0, 0, fmt.Errorf("server didn't send enough data, expected %d, got %d", downloadBytes, downloadBytes-downloadRemaining)
 			}
 			return 0, 0, err
 		}
