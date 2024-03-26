@@ -12,12 +12,13 @@ import (
 )
 
 type Options struct {
-	RunServer     bool   `long:"run-server" description:"run as server, default: false"`
-	KeyLogFile    string `long:"key-log" description:"export TLS keys"`
-	ServerAddress string `long:"server-address" description:"server address, required"`
-	UploadBytes   string `long:"upload-bytes" description:"upload bytes #[KMG]"`
-	DownloadBytes string `long:"download-bytes" description:"download bytes #[KMG]"`
-	UseBbr        bool   `long:"use-bbr" description:"use bbr, default: false"`
+	RunServer             bool   `long:"run-server" description:"run as server, default: false"`
+	KeyLogFile            string `long:"key-log" description:"export TLS keys"`
+	ServerAddress         string `long:"server-address" description:"server address, required"`
+	UploadBytes           string `long:"upload-bytes" description:"upload bytes #[KMG]"`
+	DownloadBytes         string `long:"download-bytes" description:"download bytes #[KMG]"`
+	UseBbr                bool   `long:"use-bbr" description:"use bbr, default: false"`
+	Disable1rttEncryption bool   `long:"d1e" description:"disable 1rtt encryption, default: false"`
 }
 
 func main() {
@@ -47,20 +48,26 @@ func main() {
 		go func() {
 			log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
 		}()
-		if err := perf.RunServer(opt.ServerAddress, keyLogFile, opt.UseBbr); err != nil {
+		if err := perf.RunServer(&perf.ServerConfig{
+			Addr:                  opt.ServerAddress,
+			KeyLogFile:            keyLogFile,
+			UseBbr:                opt.UseBbr,
+			Disable1rttEncryption: opt.Disable1rttEncryption,
+		}); err != nil {
 			log.Fatal(err)
 		}
 	} else {
 		go func() {
 			log.Println(http.ListenAndServe("0.0.0.0:6061", nil))
 		}()
-		if err := perf.RunClient(
-			opt.ServerAddress,
-			perf.ParseBytes(opt.UploadBytes),
-			perf.ParseBytes(opt.DownloadBytes),
-			keyLogFile,
-			opt.UseBbr,
-		); err != nil {
+		if err := perf.RunClient(&perf.ClientConfig{
+			Addr:                  opt.ServerAddress,
+			UploadBytes:           perf.ParseBytes(opt.UploadBytes),
+			DownloadBytes:         perf.ParseBytes(opt.DownloadBytes),
+			KeyLogFile:            keyLogFile,
+			UseBbr:                opt.UseBbr,
+			Disable1rttEncryption: opt.Disable1rttEncryption,
+		}); err != nil {
 			log.Fatal(err)
 		}
 	}

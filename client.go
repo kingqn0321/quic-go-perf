@@ -17,23 +17,42 @@ type Result struct {
 	Latency float64 `json:"latency"`
 }
 
-func RunClient(addr string, uploadBytes, downloadBytes uint64, keyLogFile io.Writer, useBbr bool) error {
+type ClientConfig struct {
+	Addr                       string
+	UploadBytes, DownloadBytes uint64
+	KeyLogFile                 io.Writer
+	UseBbr                     bool
+	Disable1rttEncryption      bool
+}
+
+func RunClient(cliConf *ClientConfig) error {
 	start := time.Now()
+	ticker := time.NewTicker(time.Second * 10)
+	go func() {
+		for t := range ticker.C {
+			log.Printf("Time elapsed: %.2fs", t.Sub(start).Seconds())
+		}
+	}()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	conf := config.Clone()
-	if useBbr {
-		conf.CC = quic.CcBbr
+	quicConf := config.Clone()
+	if cliConf.UseBbr {
+		log.Println("Feature use_bbr: ON")
+		quicConf.CC = quic.CcBbr
+	}
+	if cliConf.Disable1rttEncryption {
+		log.Println("Feature disable_1rtt_encryption: ON")
+		quicConf.Disable1RTTEncryption = true
 	}
 	conn, err := quic.DialAddr(
 		ctx,
-		addr,
+		cliConf.Addr,
 		&tls.Config{
 			InsecureSkipVerify: true,
 			NextProtos:         []string{ALPN},
-			KeyLogWriter:       keyLogFile,
+			KeyLogWriter:       cliConf.KeyLogFile,
 		},
-		conf,
+		quicConf,
 	)
 	if err != nil {
 		return err
@@ -42,12 +61,12 @@ func RunClient(addr string, uploadBytes, downloadBytes uint64, keyLogFile io.Wri
 	if err != nil {
 		return err
 	}
-	uploadTook, downloadTook, err := handleClientStream(str, uploadBytes, downloadBytes)
+	uploadTook, downloadTook, err := handleClientStream(str, cliConf.UploadBytes, cliConf.DownloadBytes)
 	if err != nil {
 		return err
 	}
-	log.Printf("uploaded %s: %.2fs (%s/s)", formatBytes(uploadBytes), uploadTook.Seconds(), formatBytes(bandwidth(uploadBytes, uploadTook)))
-	log.Printf("downloaded %s: %.2fs (%s/s)", formatBytes(downloadBytes), downloadTook.Seconds(), formatBytes(bandwidth(downloadBytes, downloadTook)))
+	log.Printf("uploaded %s: %.2fs (%s/s)", formatBytes(cliConf.UploadBytes), uploadTook.Seconds(), formatBytes(bandwidth(cliConf.UploadBytes, uploadTook)))
+	log.Printf("downloaded %s: %.2fs (%s/s)", formatBytes(cliConf.DownloadBytes), downloadTook.Seconds(), formatBytes(bandwidth(cliConf.DownloadBytes, downloadTook)))
 	json, err := json.Marshal(Result{
 		Latency: time.Since(start).Seconds(),
 	})
@@ -64,8 +83,8 @@ func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint6
 	if _, err := str.Write(b); err != nil {
 		return 0, 0, err
 	}
-
 	// upload data
+	log.Println("Upload data start.")
 	b = make([]byte, 16*1024)
 	uploadStart := time.Now()
 	for uploadBytes > 0 {
@@ -82,8 +101,9 @@ func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint6
 		return 0, 0, err
 	}
 	uploadTook = time.Since(uploadStart)
-
+	log.Println("Upload data complete.")
 	// download data
+	log.Println("Download data start.")
 	b = b[:cap(b)]
 	remaining := downloadBytes
 	downloadStart := time.Now()
@@ -103,5 +123,6 @@ func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint6
 			return 0, 0, err
 		}
 	}
+	log.Println("Download data complete.")
 	return uploadTook, time.Since(downloadStart), nil
 }

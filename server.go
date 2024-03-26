@@ -19,20 +19,32 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
-func RunServer(addr string, keyLogFile io.Writer, useBbr bool) error {
+type ServerConfig struct {
+	Addr                  string
+	KeyLogFile            io.Writer
+	UseBbr                bool
+	Disable1rttEncryption bool
+}
+
+func RunServer(srvConf *ServerConfig) error {
 	tlsConf, err := generateSelfSignedTLSConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 	tlsConf.NextProtos = []string{ALPN}
-	tlsConf.KeyLogWriter = keyLogFile
+	tlsConf.KeyLogWriter = srvConf.KeyLogFile
 
-	conf := config.Clone()
-	if useBbr {
-		conf.CC = quic.CcBbr
+	quicConf := config.Clone()
+	if srvConf.UseBbr {
+		log.Println("Feature use_bbr: ON")
+		quicConf.CC = quic.CcBbr
 	}
-	conf.RequireAddressValidation = func(net.Addr) bool { return false }
-	ln, err := quic.ListenAddr(addr, tlsConf, conf)
+	if srvConf.Disable1rttEncryption {
+		log.Println("Feature disable_1rtt_encryption: ON")
+		quicConf.Disable1RTTEncryption = true
+	}
+	quicConf.RequireAddressValidation = func(net.Addr) bool { return false }
+	ln, err := quic.ListenAddr(srvConf.Addr, tlsConf, quicConf)
 	if err != nil {
 		return err
 	}
