@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
 	"github.com/quic-go/quic-go"
+	"github.com/sirupsen/logrus"
 )
 
 type Result struct {
@@ -32,11 +32,11 @@ func RunClient(cliConf *ClientConfig) error {
 	defer cancel()
 	quicConf := config.Clone()
 	if cliConf.Bbrv1 {
-		log.Println("Feature bbrv1: ON")
+		logrus.Println("Feature bbrv1: ON")
 		quicConf.CC = quic.CcBbr
 	}
 	if cliConf.Disable1rttEncryption {
-		log.Println("Feature disable_1rtt_encryption: ON")
+		logrus.Println("Feature disable_1rtt_encryption: ON")
 		quicConf.Disable1RTTEncryption = true
 	}
 	conn, err := quic.DialAddr(
@@ -61,15 +61,15 @@ func RunClient(cliConf *ClientConfig) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("uploaded %s: %.2fs (%s/s)", formatBytes(cliConf.UploadBytes), uploadTook.Seconds(), formatBytes(bandwidth(cliConf.UploadBytes, uploadTook)))
-	log.Printf("downloaded %s: %.2fs (%s/s)", formatBytes(cliConf.DownloadBytes), downloadTook.Seconds(), formatBytes(bandwidth(cliConf.DownloadBytes, downloadTook)))
+	logrus.Printf("uploaded %s: %.2fs (%s/sec)\n", formatBytes(cliConf.UploadBytes), uploadTook.Seconds(), formatBits(bandwidth(cliConf.UploadBytes, uploadTook)*8))
+	logrus.Printf("downloaded %s: %.2fs (%s/sec)\n", formatBytes(cliConf.DownloadBytes), downloadTook.Seconds(), formatBits(bandwidth(cliConf.DownloadBytes, downloadTook)*8))
 	json, err := json.Marshal(Result{
 		Latency: time.Since(start).Seconds(),
 	})
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(json))
+	logrus.Println(string(json))
 	return nil
 }
 
@@ -81,7 +81,7 @@ func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint6
 		ticker := time.NewTicker(interval)
 		go func() {
 			for t := range ticker.C {
-				log.Printf("Time elapsed: %.2fs, upload: %d%%, download: %d%%",
+				logrus.Printf("Time elapsed: %.2fs, upload: %d%%, download: %d%%\n",
 					t.Sub(start).Seconds(),
 					100-uploadRemaining*100/uploadBytes,
 					100-downloadRemaining*100/downloadBytes)
@@ -94,7 +94,7 @@ func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint6
 		return 0, 0, err
 	}
 	// upload data
-	log.Println("Upload data start.")
+	logrus.Println("Upload data start.")
 	b = make([]byte, 16*1024)
 	uploadStart := time.Now()
 	for uploadRemaining > 0 {
@@ -111,9 +111,9 @@ func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint6
 		return 0, 0, err
 	}
 	uploadTook = time.Since(uploadStart)
-	log.Println("Upload data complete.")
+	logrus.Println("Upload data complete.")
 	// download data
-	log.Println("Download data start.")
+	logrus.Println("Download data start.")
 	b = b[:cap(b)]
 	downloadStart := time.Now()
 	for downloadRemaining > 0 {
@@ -132,6 +132,6 @@ func handleClientStream(str io.ReadWriteCloser, uploadBytes, downloadBytes uint6
 			return 0, 0, err
 		}
 	}
-	log.Println("Download data complete.")
+	logrus.Println("Download data complete.")
 	return uploadTook, time.Since(downloadStart), nil
 }

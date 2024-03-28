@@ -1,15 +1,19 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/quic-go/perf"
+	"github.com/sirupsen/logrus"
 )
 
 type Options struct {
@@ -21,26 +25,38 @@ type Options struct {
 	DownloadBytes         string `long:"download-bytes" description:"download bytes #[KMG]"`
 	Bbrv1                 bool   `long:"bbrv1" description:"bbrv1, default: false"`
 	Disable1rttEncryption bool   `long:"d1e" description:"disable 1rtt encryption, default: false"`
+	Log                   bool   `long:"log" description:"create log file, default: false"`
 }
 
 func main() {
+
+	os.Setenv("QUIC_GO_DISABLE_GSO", "true")
+	os.Setenv("QUIC_GO_DISABLE_ECN", "true")
+	os.Setenv("QUIC_GO_DISABLE_RECEIVE_BUFFER_WARNING", "true")
+
 	var opt Options
 	parser := flags.NewParser(&opt, flags.IgnoreUnknown)
 	_, err := parser.Parse()
 	if err != nil {
-		panic(err)
+		logrus.Fatal(err)
 	}
-
 	if opt.ServerAddress == "" {
 		parser.WriteHelp(os.Stdout)
 		os.Exit(1)
 	}
-
+	if opt.Log {
+		f, err := os.Create("log_" + strconv.FormatInt(time.Now().UnixMilli(), 10) + ".txt")
+		defer func() { f.Close() }()
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		log.SetOutput(bufio.NewWriter(f))
+	}
 	var keyLogFile io.Writer
 	if opt.KeyLogFile != "" {
 		f, err := os.Create(opt.KeyLogFile)
 		if err != nil {
-			log.Fatalf("failed to create key log file: %s", err)
+			logrus.Fatal(fmt.Sprintf("failed to create key log file: %s", err))
 		}
 		defer f.Close()
 		keyLogFile = f
@@ -52,7 +68,7 @@ func main() {
 
 	if opt.RunServer {
 		go func() {
-			log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+			logrus.Println(http.ListenAndServe("0.0.0.0:6060", nil))
 		}()
 		if err := perf.RunServer(&perf.ServerConfig{
 			Addr:                  opt.ServerAddress,
@@ -60,11 +76,11 @@ func main() {
 			Bbrv1:                 opt.Bbrv1,
 			Disable1rttEncryption: opt.Disable1rttEncryption,
 		}); err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 	} else {
 		go func() {
-			log.Println(http.ListenAndServe("0.0.0.0:6061", nil))
+			logrus.Println(http.ListenAndServe("0.0.0.0:6061", nil))
 		}()
 		if err := perf.RunClient(&perf.ClientConfig{
 			Addr:                  opt.ServerAddress,
@@ -75,7 +91,7 @@ func main() {
 			Disable1rttEncryption: opt.Disable1rttEncryption,
 			Interval:              time.Duration(perf.ParseNumber(opt.Interval) * int64(time.Second)),
 		}); err != nil {
-			log.Fatal(err)
+			logrus.Fatal(err)
 		}
 	}
 }

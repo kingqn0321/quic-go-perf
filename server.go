@@ -11,12 +11,12 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 	"net"
 	"time"
 
 	"github.com/quic-go/quic-go"
+	"github.com/sirupsen/logrus"
 )
 
 type ServerConfig struct {
@@ -29,35 +29,34 @@ type ServerConfig struct {
 func RunServer(srvConf *ServerConfig) error {
 	tlsConf, err := generateSelfSignedTLSConfig()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	tlsConf.NextProtos = []string{ALPN}
 	tlsConf.KeyLogWriter = srvConf.KeyLogFile
 
 	quicConf := config.Clone()
 	if srvConf.Bbrv1 {
-		log.Println("Feature bbrv1: ON")
+		logrus.Println("Feature bbrv1: ON")
 		quicConf.CC = quic.CcBbr
 	}
 	if srvConf.Disable1rttEncryption {
-		log.Println("Feature disable_1rtt_encryption: ON")
+		logrus.Println("Feature disable_1rtt_encryption: ON")
 		quicConf.Disable1RTTEncryption = true
 	}
-	quicConf.RequireAddressValidation = func(net.Addr) bool { return false }
 	ln, err := quic.ListenAddr(srvConf.Addr, tlsConf, quicConf)
 	if err != nil {
 		return err
 	}
-	log.Println("Listening on", ln.Addr())
+	logrus.Println("Listening on", ln.Addr())
 	defer ln.Close()
 	for {
 		conn, err := ln.Accept(context.Background())
 		if err != nil {
-			return fmt.Errorf("accept errored: %w", err)
+			return fmt.Errorf("accept error: %w", err)
 		}
 		go func(conn quic.Connection) {
 			if err := handleConn(conn); err != nil {
-				log.Printf("handling conn from %s failed: %s", conn.RemoteAddr(), err)
+				logrus.Printf("handling conn from %s failed: %s\n", conn.RemoteAddr(), err)
 			}
 		}(conn)
 	}
@@ -71,7 +70,7 @@ func handleConn(conn quic.Connection) error {
 		}
 		go func(str quic.Stream) {
 			if err := handleServerStream(str); err != nil {
-				log.Printf("handling stream from %s failed: %s", conn.RemoteAddr(), err)
+				logrus.Printf("handling stream from %s failed: %s\n", conn.RemoteAddr(), err)
 			}
 		}(str)
 	}

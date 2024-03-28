@@ -1,4 +1,5 @@
 /release/
-main
-cmd
-*.key
+
+/cmd/*
+!/cmd/*.go
+
