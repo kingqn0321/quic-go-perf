@@ -13,9 +13,11 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"os"
 	"time"
 
 	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/qlog"
 	"github.com/sirupsen/logrus"
 )
 
@@ -33,12 +35,16 @@ func RunServer(srvConf *ServerConfig) error {
 	}
 	tlsConf.NextProtos = []string{ALPN}
 	tlsConf.KeyLogWriter = srvConf.KeyLogFile
+	os.Setenv("QLOGDIR", "./qlogs")
+	quicConf := &quic.Config{
+		Tracer: qlog.DefaultTracer,
+	}
 
-	quicConf := config.Clone()
 	if srvConf.Bbrv1 {
 		logrus.Println("Feature bbrv1: ON")
 		quicConf.CC = quic.CcBbr
 	}
+
 	if srvConf.Disable1rttEncryption {
 		logrus.Println("Feature disable_1rtt_encryption: ON")
 		quicConf.Disable1RTTEncryption = true

@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/qlog"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,7 +32,10 @@ func RunClient(cliConf *ClientConfig) error {
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	quicConf := config.Clone()
+	os.Setenv("QLOGDIR", "./qlogs")
+	quicConf := &quic.Config{
+		Tracer: qlog.DefaultTracer,
+	}
 	if cliConf.Bbrv1 {
 		logrus.Println("Feature bbrv1: ON")
 		quicConf.CC = quic.CcBbr
