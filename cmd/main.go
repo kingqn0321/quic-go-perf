@@ -24,6 +24,7 @@ type Options struct {
 	UploadBytes           string `long:"upload-bytes" description:"upload bytes #[KMG]"`
 	DownloadBytes         string `long:"download-bytes" description:"download bytes #[KMG]"`
 	Bbrv1                 bool   `long:"bbrv1" description:"bbrv1, default: false"`
+	Bbrv2                 bool   `long:"bbrv2" description:"bbrv2, default: false"`
 	Disable1rttEncryption bool   `long:"d1e" description:"disable 1rtt encryption, default: false"`
 	Log                   bool   `long:"log" description:"create log file, default: false"`
 }
@@ -74,6 +75,7 @@ func main() {
 			Addr:                  opt.ServerAddress,
 			KeyLogFile:            keyLogFile,
 			Bbrv1:                 opt.Bbrv1,
+			Bbrv2:                 opt.Bbrv2,
 			Disable1rttEncryption: opt.Disable1rttEncryption,
 		}); err != nil {
 			panic(err)
@@ -88,6 +90,7 @@ func main() {
 			DownloadBytes:         perf.ParseBytes(opt.DownloadBytes),
 			KeyLogFile:            keyLogFile,
 			Bbrv1:                 opt.Bbrv1,
+			Bbrv2:                 opt.Bbrv2,
 			Disable1rttEncryption: opt.Disable1rttEncryption,
 			Interval:              time.Duration(perf.ParseNumber(opt.Interval) * int64(time.Second)),
 		}); err != nil {

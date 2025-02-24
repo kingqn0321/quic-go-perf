@@ -25,6 +25,7 @@ type ServerConfig struct {
 	Addr                  string
 	KeyLogFile            io.Writer
 	Bbrv1                 bool
+	Bbrv2                 bool
 	Disable1rttEncryption bool
 }
 
@@ -44,7 +45,10 @@ func RunServer(srvConf *ServerConfig) error {
 		logrus.Println("Feature bbrv1: ON")
 		quicConf.CC = quic.CcBbr
 	}
-
+	if srvConf.Bbrv2 {
+		logrus.Println("Feature bbrv2: ON")
+		quicConf.CC = quic.CcBbrv2
+	}
 	if srvConf.Disable1rttEncryption {
 		logrus.Println("Feature disable_1rtt_encryption: ON")
 		quicConf.Disable1RTTEncryption = true

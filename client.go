@@ -24,6 +24,7 @@ type ClientConfig struct {
 	UploadBytes, DownloadBytes uint64
 	KeyLogFile                 io.Writer
 	Bbrv1                      bool
+	Bbrv2                      bool
 	Disable1rttEncryption      bool
 	Interval                   time.Duration
 }
@@ -39,6 +40,10 @@ func RunClient(cliConf *ClientConfig) error {
 	if cliConf.Bbrv1 {
 		logrus.Println("Feature bbrv1: ON")
 		quicConf.CC = quic.CcBbr
+	}
+	if cliConf.Bbrv2 {
+		logrus.Println("Feature bbrv2: ON")
+		quicConf.CC = quic.CcBbrv2
 	}
 	if cliConf.Disable1rttEncryption {
 		logrus.Println("Feature disable_1rtt_encryption: ON")
