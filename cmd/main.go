@@ -23,6 +23,7 @@ type Options struct {
 	Interval              string `long:"interval" description:"check interval (second), default: 10"`
 	UploadBytes           string `long:"upload-bytes" description:"upload bytes #[KMG]"`
 	DownloadBytes         string `long:"download-bytes" description:"download bytes #[KMG]"`
+	RedundancyLevel       string `long:"red-level" description:"redundancy level, default: 0"`
 	Bbrv1                 bool   `long:"bbrv1" description:"bbrv1, default: false"`
 	Bbrv2                 bool   `long:"bbrv2" description:"bbrv2, default: false"`
 	Disable1rttEncryption bool   `long:"d1e" description:"disable 1rtt encryption, default: false"`
@@ -77,6 +78,7 @@ func main() {
 			Bbrv1:                 opt.Bbrv1,
 			Bbrv2:                 opt.Bbrv2,
 			Disable1rttEncryption: opt.Disable1rttEncryption,
+			RedundancyLevel:       uint32(perf.ParseNumber(opt.RedundancyLevel)),
 		}); err != nil {
 			panic(err)
 		}
@@ -92,6 +94,7 @@ func main() {
 			Bbrv1:                 opt.Bbrv1,
 			Bbrv2:                 opt.Bbrv2,
 			Disable1rttEncryption: opt.Disable1rttEncryption,
+			RedundancyLevel:       uint32(perf.ParseNumber(opt.RedundancyLevel)),
 			Interval:              time.Duration(perf.ParseNumber(opt.Interval) * int64(time.Second)),
 		}); err != nil {
 			logrus.Fatal(err)

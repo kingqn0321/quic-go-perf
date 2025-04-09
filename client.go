@@ -26,6 +26,7 @@ type ClientConfig struct {
 	Bbrv1                      bool
 	Bbrv2                      bool
 	Disable1rttEncryption      bool
+	RedundancyLevel            uint32
 	Interval                   time.Duration
 }
 
@@ -48,6 +49,10 @@ func RunClient(cliConf *ClientConfig) error {
 	if cliConf.Disable1rttEncryption {
 		logrus.Println("Feature disable_1rtt_encryption: ON")
 		quicConf.Disable1RTTEncryption = true
+	}
+	if cliConf.RedundancyLevel > 0 {
+		logrus.Printf("Feature RedundancyLevel: ON (%d)", cliConf.RedundancyLevel)
+		quicConf.RedundancyLevel = cliConf.RedundancyLevel
 	}
 	conn, err := quic.DialAddr(
 		ctx,

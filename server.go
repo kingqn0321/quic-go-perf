@@ -27,6 +27,7 @@ type ServerConfig struct {
 	Bbrv1                 bool
 	Bbrv2                 bool
 	Disable1rttEncryption bool
+	RedundancyLevel       uint32
 }
 
 func RunServer(srvConf *ServerConfig) error {
@@ -52,6 +53,10 @@ func RunServer(srvConf *ServerConfig) error {
 	if srvConf.Disable1rttEncryption {
 		logrus.Println("Feature disable_1rtt_encryption: ON")
 		quicConf.Disable1RTTEncryption = true
+	}
+	if srvConf.RedundancyLevel > 0 {
+		logrus.Printf("Feature RedundancyLevel: ON (%d)", srvConf.RedundancyLevel)
+		quicConf.RedundancyLevel = srvConf.RedundancyLevel
 	}
 	ln, err := quic.ListenAddr(srvConf.Addr, tlsConf, quicConf)
 	if err != nil {
