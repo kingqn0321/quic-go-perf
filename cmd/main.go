@@ -27,6 +27,7 @@ type Options struct {
 	Bbrv1                 bool   `long:"bbrv1" description:"bbrv1, default: false"`
 	Bbrv2                 bool   `long:"bbrv2" description:"bbrv2, default: false"`
 	Disable1rttEncryption bool   `long:"d1e" description:"disable 1rtt encryption, default: false"`
+	Enable0RTT            bool   `long:"0rtt" description:"enable 0rtt, default: false"`
 	Log                   bool   `long:"log" description:"create log file, default: false"`
 }
 
@@ -78,6 +79,7 @@ func main() {
 			Bbrv1:                 opt.Bbrv1,
 			Bbrv2:                 opt.Bbrv2,
 			Disable1rttEncryption: opt.Disable1rttEncryption,
+			Enable0RTT:            opt.Enable0RTT,
 			RedundancyLevel:       uint32(perf.ParseNumber(opt.RedundancyLevel)),
 		}); err != nil {
 			panic(err)
@@ -94,6 +96,7 @@ func main() {
 			Bbrv1:                 opt.Bbrv1,
 			Bbrv2:                 opt.Bbrv2,
 			Disable1rttEncryption: opt.Disable1rttEncryption,
+			Enable0RTT:            opt.Enable0RTT,
 			RedundancyLevel:       uint32(perf.ParseNumber(opt.RedundancyLevel)),
 			Interval:              time.Duration(perf.ParseNumber(opt.Interval) * int64(time.Second)),
 		}); err != nil {

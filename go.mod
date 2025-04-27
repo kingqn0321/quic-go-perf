@@ -24,4 +24,4 @@ require (
 )
 
 // replace github.com/quic-go/quic-go => github.com/kingqn0321/qbox-quic-go v0.42.0-mod.1
-replace github.com/quic-go/quic-go => /home/king/WorkSpace/qbox-quic-go
+replace github.com/quic-go/quic-go => /home/king/WorkSpace/qbox/qbox-quic-go
